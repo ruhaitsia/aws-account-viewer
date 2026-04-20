@@ -1,8 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Tabs, Select, Button, Input, Spin, Result, Alert, Space, Typography } from 'antd';
+import { Tabs, Select, Button, Input, Spin, Result, Alert, Space, Typography, Divider } from 'antd';
+import {
+  CloudServerOutlined,
+  DashboardOutlined,
+  DollarOutlined,
+  ExportOutlined,
+  SafetyOutlined,
+} from '@ant-design/icons';
 import { useCredentialStore } from '../../stores/credentialStore';
 
-const { Title } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 const AWS_REGIONS = [
   'us-east-1',
@@ -161,10 +168,39 @@ export default function CredentialForm() {
     },
   ];
 
+  const features = [
+    { icon: <DashboardOutlined />, text: 'Dashboard 总览所有 AWS 资源与健康状态' },
+    { icon: <DollarOutlined />, text: '费用分析、趋势图表与月度对比' },
+    { icon: <CloudServerOutlined />, text: '支持 EC2、S3、RDS、Lambda 等 15+ 服务' },
+    { icon: <ExportOutlined />, text: '数据导出为 JSON/CSV，支持上传至自定义 API' },
+    { icon: <SafetyOutlined />, text: '凭证本地验证，数据上传自动脱敏' },
+  ];
+
   return (
-    <div style={{ maxWidth: 480, margin: '80px auto', padding: '0 24px' }}>
-      <Title level={3} style={{ textAlign: 'center', marginBottom: 32 }}>
-        AWS 凭证配置
+    <div style={{ maxWidth: 520, margin: '40px auto', padding: '0 24px' }}>
+      {/* App intro */}
+      <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <CloudServerOutlined style={{ fontSize: 48, color: '#1890ff', marginBottom: 12 }} />
+        <Title level={3} style={{ marginBottom: 4 }}>AWS Account Viewer</Title>
+        <Paragraph type="secondary" style={{ fontSize: 14, marginBottom: 16 }}>
+          跨平台桌面应用，集中查看和管理 AWS 账户资源与费用
+        </Paragraph>
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        {features.map((f, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <span style={{ color: '#1890ff', fontSize: 16 }}>{f.icon}</span>
+            <Text style={{ fontSize: 13 }}>{f.text}</Text>
+          </div>
+        ))}
+      </div>
+
+      <Divider style={{ margin: '16px 0' }} />
+
+      {/* Credential form */}
+      <Title level={5} style={{ textAlign: 'center', marginBottom: 16 }}>
+        配置 AWS 凭证以开始使用
       </Title>
       <Tabs items={tabItems} centered />
       <ValidationStatus />

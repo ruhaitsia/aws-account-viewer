@@ -5,3 +5,7 @@ release/
 *.log
 .env
 .env.*
+.kiro/
+.vscode/
+.kiro/
+.vscode/

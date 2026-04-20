@@ -1,5 +1,5 @@
 import { Button, Select, Space, Typography } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SwapOutlined } from '@ant-design/icons';
 import { useCredentialStore } from '../../stores/credentialStore';
 import { useAppStore } from '../../stores/appStore';
 
@@ -34,7 +34,7 @@ function formatTimestamp(ts: number): string {
 }
 
 export default function TopBar() {
-  const { accountId, accountAlias, activeProfile } = useCredentialStore();
+  const { accountId, accountAlias, activeProfile, logout } = useCredentialStore();
   const { currentRegion, lastRefreshTime, isRefreshing, switchRegion, refreshAll } = useAppStore();
 
   const defaultRegion = activeProfile?.region;
@@ -84,7 +84,7 @@ export default function TopBar() {
         optionFilterProp="label"
       />
 
-      {/* Right: refresh + timestamp */}
+      {/* Right: refresh + switch account + timestamp */}
       <Space size="middle">
         {lastRefreshTime && (
           <Text type="secondary" style={{ fontSize: 12 }}>
@@ -97,6 +97,12 @@ export default function TopBar() {
           onClick={refreshAll}
         >
           刷新
+        </Button>
+        <Button
+          icon={<SwapOutlined />}
+          onClick={logout}
+        >
+          切换账号
         </Button>
       </Space>
     </div>

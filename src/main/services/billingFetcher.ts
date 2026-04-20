@@ -69,8 +69,16 @@ function formatDate(date: Date): string {
 }
 
 /**
+ * The cost metric used for all Cost Explorer queries.
+ * UnblendedCost matches the AWS Console Billing & Cost Management dashboard,
+ * which shows the actual usage cost before any RI/SP amortization.
+ */
+const COST_METRIC = 'UnblendedCost';
+
+/**
  * Fetch billing data from AWS Cost Explorer.
  * Retrieves current month costs grouped by service and previous month total for comparison.
+ * Uses AmortizedCost to match the AWS Console Billing page.
  */
 export async function fetchBillingData(
   clientConfig: ClientConfig,
@@ -95,7 +103,7 @@ export async function fetchBillingData(
           End: formatDate(currentMonthEnd),
         },
         Granularity: 'MONTHLY',
-        Metrics: ['UnblendedCost'],
+        Metrics: [COST_METRIC],
         GroupBy: [{ Type: 'DIMENSION', Key: 'SERVICE' }],
       }),
     );
@@ -108,7 +116,7 @@ export async function fetchBillingData(
           End: formatDate(previousMonthEnd),
         },
         Granularity: 'MONTHLY',
-        Metrics: ['UnblendedCost'],
+        Metrics: [COST_METRIC],
       }),
     );
 
@@ -120,12 +128,10 @@ export async function fetchBillingData(
     const groups = currentResponse.ResultsByTime?.[0]?.Groups ?? [];
     for (const group of groups) {
       const name = group.Keys?.[0] ?? 'Unknown';
-      const amount = parseFloat(group.Metrics?.UnblendedCost?.Amount ?? '0');
-      currency = group.Metrics?.UnblendedCost?.Unit ?? 'USD';
-      if (amount > 0) {
-        serviceCosts.push({ serviceName: name, cost: amount });
-        totalCost += amount;
-      }
+      const amount = parseFloat(group.Metrics?.[COST_METRIC]?.Amount ?? '0');
+      currency = group.Metrics?.[COST_METRIC]?.Unit ?? 'USD';
+      serviceCosts.push({ serviceName: name, cost: amount });
+      totalCost += amount;
     }
 
     // Sort by cost descending
@@ -133,7 +139,7 @@ export async function fetchBillingData(
 
     // Parse previous month total
     const previousTotal = parseFloat(
-      previousResponse.ResultsByTime?.[0]?.Total?.UnblendedCost?.Amount ?? '0',
+      previousResponse.ResultsByTime?.[0]?.Total?.[COST_METRIC]?.Amount ?? '0',
     );
 
     const changePercentage = calculateChangePercentage(totalCost, previousTotal);
@@ -216,14 +222,8 @@ export function parseDailyResponse(
 
 /**
  * Fetch all billing data needed for the Dashboard enhancement.
- * Issues 4 parallel Cost Explorer API calls:
- * 1. Current month costs grouped by service (MONTHLY)
- * 2. Previous month total (MONTHLY)
- * 3. Current month daily costs (DAILY)
- * 4. Previous month costs grouped by service (MONTHLY)
- *
- * Reuses existing Cost Explorer client config (region fixed to us-east-1).
- * On failure, returns empty data with an error field, consistent with fetchBillingData.
+ * Issues 4 parallel Cost Explorer API calls using AmortizedCost
+ * to match the AWS Console Billing page.
  */
 export async function fetchBillingDashboardData(
   clientConfig: ClientConfig,
@@ -257,7 +257,7 @@ export async function fetchBillingDashboardData(
         new GetCostAndUsageCommand({
           TimePeriod: { Start: currentMonthStartStr, End: currentMonthEndStr },
           Granularity: 'MONTHLY',
-          Metrics: ['UnblendedCost'],
+          Metrics: [COST_METRIC],
           GroupBy: [{ Type: 'DIMENSION', Key: 'SERVICE' }],
         }),
       ),
@@ -266,7 +266,7 @@ export async function fetchBillingDashboardData(
         new GetCostAndUsageCommand({
           TimePeriod: { Start: previousMonthStartStr, End: previousMonthEndStr },
           Granularity: 'MONTHLY',
-          Metrics: ['UnblendedCost'],
+          Metrics: [COST_METRIC],
         }),
       ),
       // 3. Current month daily
@@ -274,7 +274,7 @@ export async function fetchBillingDashboardData(
         new GetCostAndUsageCommand({
           TimePeriod: { Start: currentMonthStartStr, End: currentMonthEndStr },
           Granularity: 'DAILY',
-          Metrics: ['UnblendedCost'],
+          Metrics: [COST_METRIC],
         }),
       ),
       // 4. Previous month by service
@@ -282,7 +282,7 @@ export async function fetchBillingDashboardData(
         new GetCostAndUsageCommand({
           TimePeriod: { Start: previousMonthStartStr, End: previousMonthEndStr },
           Granularity: 'MONTHLY',
-          Metrics: ['UnblendedCost'],
+          Metrics: [COST_METRIC],
           GroupBy: [{ Type: 'DIMENSION', Key: 'SERVICE' }],
         }),
       ),
@@ -296,18 +296,16 @@ export async function fetchBillingDashboardData(
     const currentGroups = currentByServiceRes.ResultsByTime?.[0]?.Groups ?? [];
     for (const group of currentGroups) {
       const name = group.Keys?.[0] ?? 'Unknown';
-      const amount = parseFloat(group.Metrics?.UnblendedCost?.Amount ?? '0');
-      currency = group.Metrics?.UnblendedCost?.Unit ?? 'USD';
-      if (amount > 0) {
-        currentMonthServiceCosts.push({ serviceName: name, cost: amount });
-        totalCost += amount;
-      }
+      const amount = parseFloat(group.Metrics?.[COST_METRIC]?.Amount ?? '0');
+      currency = group.Metrics?.[COST_METRIC]?.Unit ?? 'USD';
+      currentMonthServiceCosts.push({ serviceName: name, cost: amount });
+      totalCost += amount;
     }
     currentMonthServiceCosts.sort((a, b) => b.cost - a.cost);
 
     // Parse previous month total
     const previousMonthTotal = parseFloat(
-      previousTotalRes.ResultsByTime?.[0]?.Total?.UnblendedCost?.Amount ?? '0',
+      previousTotalRes.ResultsByTime?.[0]?.Total?.[COST_METRIC]?.Amount ?? '0',
     );
 
     // Calculate change percentage
@@ -321,10 +319,8 @@ export async function fetchBillingDashboardData(
     const previousGroups = previousByServiceRes.ResultsByTime?.[0]?.Groups ?? [];
     for (const group of previousGroups) {
       const name = group.Keys?.[0] ?? 'Unknown';
-      const amount = parseFloat(group.Metrics?.UnblendedCost?.Amount ?? '0');
-      if (amount > 0) {
-        previousMonthServiceCosts.push({ serviceName: name, cost: amount });
-      }
+      const amount = parseFloat(group.Metrics?.[COST_METRIC]?.Amount ?? '0');
+      previousMonthServiceCosts.push({ serviceName: name, cost: amount });
     }
     previousMonthServiceCosts.sort((a, b) => b.cost - a.cost);
 

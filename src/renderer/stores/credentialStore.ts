@@ -19,6 +19,7 @@ interface CredentialState {
   selectProfile: (profile: AWSProfile) => Promise<void>;
   validateProfile: (profile: AWSProfile) => Promise<void>;
   setManualCredential: (input: ManualCredentialInput) => Promise<void>;
+  logout: () => void;
 }
 
 export const useCredentialStore = create<CredentialState>((set) => ({
@@ -147,5 +148,15 @@ export const useCredentialStore = create<CredentialState>((set) => ({
         },
       });
     }
+  },
+
+  logout: () => {
+    set({
+      activeProfile: null,
+      credentialStatus: 'idle',
+      accountId: null,
+      accountAlias: null,
+      validationError: null,
+    });
   },
 }));

@@ -243,6 +243,29 @@ const BillingPanel: React.FC = () => {
     ? [...top10, { serviceName: '其他', cost: otherCost }]
     : [...top10];
 
+  // Shorten long AWS service names for chart display
+  const shortenName = (name: string): string => {
+    const shortened = name
+      .replace('Amazon Elastic Compute Cloud - Compute', 'EC2')
+      .replace('Amazon Simple Storage Service', 'S3')
+      .replace('Amazon Relational Database Service', 'RDS')
+      .replace('Amazon Elastic Container Service', 'ECS')
+      .replace('Amazon Elastic Kubernetes Service', 'EKS')
+      .replace('Amazon Simple Notification Service', 'SNS')
+      .replace('Amazon Simple Queue Service', 'SQS')
+      .replace('Amazon Virtual Private Cloud', 'VPC')
+      .replace('Elastic Load Balancing', 'ELB')
+      .replace('AWS Identity and Access Management', 'IAM')
+      .replace('Amazon ', '')
+      .replace('AWS ', '');
+    return shortened.length > 20 ? shortened.slice(0, 18) + '…' : shortened;
+  };
+
+  const barChartData = chartData.map((item) => ({
+    ...item,
+    shortName: shortenName(item.serviceName),
+  }));
+
   const formatDate = (ts: number) => {
     const d = new Date(ts);
     return `${d.getMonth() + 1}/${d.getDate()}`;
@@ -390,13 +413,19 @@ const BillingPanel: React.FC = () => {
         <Col xs={24} md={12}>
           <Card title="按服务分类费用（柱状图）" size="small">
             {chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData} layout="vertical" margin={{ left: 120 }}>
-                  <XAxis type="number" tickFormatter={(v) => `${v.toFixed(0)}`} />
-                  <YAxis type="category" dataKey="serviceName" width={110} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v: number) => [`${v.toFixed(2)}`, '费用']} />
-                  <Bar dataKey="cost" fill="#1890ff">
-                    {chartData.map((_, i) => (
+              <ResponsiveContainer width="100%" height={Math.max(300, barChartData.length * 36)}>
+                <BarChart data={barChartData} layout="vertical" margin={{ left: 20, right: 30, top: 5, bottom: 5 }}>
+                  <XAxis type="number" tickFormatter={(v) => `$${v.toFixed(0)}`} />
+                  <YAxis
+                    type="category"
+                    dataKey="shortName"
+                    width={140}
+                    tick={{ fontSize: 12 }}
+                    interval={0}
+                  />
+                  <Tooltip formatter={(v: number) => [`$${v.toFixed(2)}`, '费用']} />
+                  <Bar dataKey="cost" fill="#1890ff" barSize={20}>
+                    {barChartData.map((_, i) => (
                       <Cell
                         key={i}
                         fill={COLORS[i % COLORS.length]}
@@ -423,11 +452,9 @@ const BillingPanel: React.FC = () => {
                     nameKey="serviceName"
                     cx="50%"
                     cy="50%"
-                    outerRadius={100}
-                    label={({ serviceName, percent }) =>
-                      `${serviceName}: ${(percent * 100).toFixed(1)}%`
-                    }
-                    labelLine
+                    outerRadius={90}
+                    label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
+                    labelLine={{ strokeWidth: 1 }}
                   >
                     {chartData.map((_, i) => (
                       <Cell
@@ -438,7 +465,9 @@ const BillingPanel: React.FC = () => {
                       />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => [`${v.toFixed(2)}`, '费用']} />
+                  <Tooltip
+                    formatter={(v: number, name: string) => [`$${v.toFixed(2)}`, name]}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (

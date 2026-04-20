@@ -1,4 +1,4 @@
-import { Menu, Badge, Tag } from 'antd';
+import { Menu } from 'antd';
 import {
   DashboardOutlined,
   CloudServerOutlined,
@@ -44,22 +44,67 @@ function getResourceCount(serviceName: ServiceName, summaries: { serviceName: st
   return summary?.resourceCount ?? 0;
 }
 
-function serviceLabel(displayName: string, count: number, isGlobal: boolean): ReactNode {
-  const globalTag = isGlobal ? (
-    <Tag color="blue" style={{ fontSize: 10, lineHeight: '16px', padding: '0 4px', marginLeft: 4 }}>全局</Tag>
-  ) : null;
+/**
+ * Short display names for the sidebar to avoid text truncation.
+ * Maps the full displayName to a concise Chinese label.
+ */
+const SHORT_NAMES: Record<string, string> = {
+  'Amazon EC2': 'EC2 实例',
+  'AWS Lambda': 'Lambda',
+  'Amazon ECS/EKS': 'ECS/EKS',
+  'Amazon S3': 'S3 存储桶',
+  'Amazon DynamoDB': 'DynamoDB',
+  'Amazon RDS': 'RDS 数据库',
+  'Amazon VPC': 'VPC 网络',
+  'Elastic Load Balancing': '负载均衡',
+  'Amazon CloudFront': 'CloudFront',
+  'Amazon Route 53': 'Route 53',
+  'Amazon SNS/SQS': 'SNS/SQS',
+  'AWS IAM': 'IAM 身份',
+  'Amazon CloudWatch': 'CloudWatch',
+  'AWS Billing': '账单费用',
+};
 
-  if (count === 0) {
-    return (
-      <span style={{ color: 'rgba(255,255,255,0.35)' }}>
-        {displayName}{globalTag} <span style={{ fontSize: 12 }}>无资源</span>
-      </span>
-    );
-  }
+function serviceLabel(displayName: string, count: number, isGlobal: boolean): ReactNode {
+  const shortName = SHORT_NAMES[displayName] ?? displayName;
+
   return (
-    <span>
-      {displayName}{globalTag}{' '}
-      <Badge count={count} size="small" style={{ marginLeft: 4 }} overflowCount={9999} />
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+        overflow: 'hidden',
+        color: count === 0 ? 'rgba(255,255,255,0.35)' : undefined,
+      }}
+    >
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+        {shortName}
+        {isGlobal && (
+          <span
+            style={{
+              display: 'inline-block',
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: '#1890ff',
+              marginLeft: 4,
+              verticalAlign: 'middle',
+            }}
+          />
+        )}
+      </span>
+      <span
+        style={{
+          fontSize: 12,
+          color: count === 0 ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.65)',
+          marginLeft: 4,
+          flexShrink: 0,
+        }}
+      >
+        {count}
+      </span>
     </span>
   );
 }
@@ -86,7 +131,6 @@ export default function ServiceNavigator() {
           icon: ICON_MAP[svc.icon],
           label: serviceLabel(svc.displayName, count, svc.isGlobal),
           disabled: false,
-          style: count === 0 ? { opacity: 0.5 } : undefined,
         };
       }),
     })),

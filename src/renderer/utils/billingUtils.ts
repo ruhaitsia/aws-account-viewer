@@ -7,6 +7,48 @@ interface ServiceCost {
 }
 
 /**
+ * Mapping from AWS Cost Explorer service names to internal short service names.
+ * AWS returns full names like "Amazon Elastic Compute Cloud - Compute",
+ * while the dashboard uses short names like "ec2".
+ *
+ * This uses keyword-based fuzzy matching to handle the many name variants
+ * that AWS Cost Explorer can return.
+ */
+
+/** Keyword rules for matching AWS service names to internal short names. */
+const SERVICE_MATCH_RULES: Array<{ key: string; patterns: RegExp }> = [
+  { key: 'ec2',        patterns: /\b(ec2|elastic compute cloud)\b/i },
+  { key: 's3',         patterns: /\b(s3|simple storage service)\b/i },
+  { key: 'rds',        patterns: /\b(rds|relational database service)\b/i },
+  { key: 'lambda',     patterns: /\blambda\b/i },
+  { key: 'elb',        patterns: /\b(elastic load|elb|load balancing)\b/i },
+  { key: 'vpc',        patterns: /\b(vpc|virtual private cloud)\b/i },
+  { key: 'iam',        patterns: /\b(iam|identity and access)\b/i },
+  { key: 'ecs',        patterns: /\b(ecs|elastic container service)\b/i },
+  { key: 'eks',        patterns: /\b(eks|elastic kubernetes)\b/i },
+  { key: 'dynamodb',   patterns: /\bdynamo\s*db\b/i },
+  { key: 'cloudfront', patterns: /\bcloudfront\b/i },
+  { key: 'sns',        patterns: /\b(sns|simple notification)\b/i },
+  { key: 'sqs',        patterns: /\b(sqs|simple queue)\b/i },
+  { key: 'route53',    patterns: /\broute\s*53\b/i },
+  { key: 'metrics',    patterns: /\bcloudwatch\b/i },
+];
+
+/**
+ * Normalize an AWS Cost Explorer service name to the internal short name
+ * using regex-based fuzzy matching.
+ * Returns the original name if no rule matches.
+ */
+function normalizeServiceName(awsName: string): string {
+  for (const rule of SERVICE_MATCH_RULES) {
+    if (rule.patterns.test(awsName)) {
+      return rule.key;
+    }
+  }
+  return awsName;
+}
+
+/**
  * Format a number as a currency string with thousand separators.
  * Example: 1234.5 → "$1,234.50"
  */
@@ -104,13 +146,17 @@ export function generateForecastLine(
 
 /**
  * Convert a service costs array into a serviceName → cost mapping.
+ * AWS Cost Explorer returns full service names (e.g. "Amazon Elastic Compute Cloud - Compute"),
+ * which are normalized to internal short names (e.g. "ec2").
+ * Multiple AWS entries that map to the same short name are summed.
  */
 export function buildServiceCostMap(
   serviceCosts: ServiceCost[],
 ): Record<string, number> {
   const map: Record<string, number> = {};
   for (const sc of serviceCosts) {
-    map[sc.serviceName] = sc.cost;
+    const key = normalizeServiceName(sc.serviceName);
+    map[key] = (map[key] ?? 0) + sc.cost;
   }
   return map;
 }
